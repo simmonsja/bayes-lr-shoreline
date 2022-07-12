@@ -1,25 +1,51 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import streamlit as st
 
-from functions import (calculate_wave_energy, find_pareto_front, linear_model,
-                       plot_regression)
-import matplotlib.pyplot as plt
-import seaborn as sns
+# plotting
+from functions import (plot_regression, plot_pareto_points) 
+# model 
+from functions import (linear_model)
+# data
+from functions import(load_shoreline_data, load_wave_data) 
+# analysis
+from functions import (find_pareto_front,generate_storm_dataset)
+
 sns.set_style('whitegrid')
 sns.set_context('talk')
 import arviz as az
-
-#numpyro
-from jax import random
 import jax.numpy as jnp
+#numpyro
+from jax import random, transfer_guard_device_to_device
 from numpyro.diagnostics import hpdi
-from numpyro.infer import MCMC, NUTS
-from numpyro.infer import Predictive
+from numpyro.infer import MCMC, NUTS, Predictive
+
+st.set_page_config(
+    page_title="Storm Erosion Curve Fit",
+    page_icon="🌊",
+    layout="wide"
+)
+
+# def update_width():
+#     '''From Streamlit examples'''
+#     max_width_str = "max-width: 1400px;"
+#     st.markdown(
+#         '''
+#         <style>
+#         .main .block-container{{
+#             {}
+#         }}
+#         </style>    
+#         '''.format(max_width_str),
+#         unsafe_allow_html=True,
+#     )
+# update_width()
 
 st.title("Storm Erosion Curve Fit")
 
-c29, c30, c31 = st.columns([1, 6, 1])
+cInteract, cOutput = st.columns([1, 3])
 
 # Initialization
 if 'x_log' not in st.session_state:
@@ -28,72 +54,58 @@ if 'y_log' not in st.session_state:
     st.session_state['y_log'] = None
 if 'samples' not in st.session_state:
     st.session_state['samples'] = None
+if 'data_fig' not in st.session_state:
+    st.session_state['data_fig'] = None
+if 'pareto_fig' not in st.session_state:
+    st.session_state['pareto_fig'] = None
+if 'params_fig' not in st.session_state:
+    st.session_state['params_fig'] = None
+if 'regression_fig 'not in st.session_state:
+    st.session_state['regression_fig'] = None
 
-with c30:
+@st.experimental_singleton
+def load_data(t_name):
+    # sped up loading of data that caches
+    raw_shl_data = load_shoreline_data(transect_name=t_name)
+    raw_wave_data = load_wave_data(transect_name=t_name)
+    shl_data = generate_storm_dataset(raw_shl_data, raw_wave_data)
+    return shl_data
 
-    # load wave data
-    rawWaveData = pd.read_csv('combined_era_data_-34.0_151.5.csv',index_col=0,parse_dates=True)
-    # shoreline data
-    transectName = 'aus0206-0005'
-    csSource = 'http://coastsat.wrl.unsw.edu.au/time-series/{}/'
-    tmpLoc =  "working_data.csv"
-    # download = False
-
-    # if download:
-    #     urllib.request.urlretrieve(csSource.format(transectName), tmpLoc)
-
-    rawShlData = pd.read_csv(tmpLoc,parse_dates=True,index_col=0,header=None)
-    rawShlData.index = pd.to_datetime(rawShlData.index,utc=True)
-    rawShlData.columns = ['Shoreline']
-    rawShlData.index.name = 'Date'
-
-    diffShlData = rawShlData.diff()
-    diffShlData.columns = ['dShl'] 
-
-    # st.pyplot(fig=sns.histplot(diffShlData.dropna()))
-
-    # Prepare the diffShlData df
-    shlData = rawShlData.diff().copy()
-    shlData['postDate'] = shlData.index
-    shlData.loc[shlData.index[1:],'preDate'] = shlData.index[:-1]
-    shlData.drop(shlData.index[0],inplace=True)
-    shlData.index = ['Storm_{0:04.0f}'.format(_) for _ in range(shlData.shape[0])]
-
-    # split the wave data according to the shoreline data
-    waveData = {}
-    for thisStorm in shlData.index:
-        waveData[thisStorm] = rawWaveData.loc[shlData.loc[thisStorm,'preDate']:shlData.loc[thisStorm,'postDate']]
-        shlData.loc[thisStorm,'E'] = calculate_wave_energy(waveData[thisStorm])
-
-    # constrain shlData by adding consective shoreline movements
-    # print(shlData)
-    shlData['zeroCross'] = np.sign(shlData['Shoreline']).diff().ne(0).astype(int)
-    shlData['zeroCross'] = shlData['zeroCross'].cumsum()
-    groupedVals = shlData.groupby(by='zeroCross',as_index=False).sum()
-    groupedVals.index = shlData.index[[np.where(shlData['zeroCross'] == _)[0][0] for _ in groupedVals['zeroCross']]]
-    shlData['E'] = groupedVals['E']
-    shlData['Shoreline'] = groupedVals['Shoreline']
-    shlData.drop_duplicates(subset=['zeroCross'],inplace=True)
+with cInteract:
+    st.subheader("Load and clean the data...")
+    transect_name = st.text_input(
+        "Transect name:",
+        "aus0206-0005"
+    )
+    shl_data = load_data(transect_name)
+    
+    st.session_state['data_fig'] = plot_pareto_points(shl_data,hue='timeDelta')
+    # st.pyplot(fig=data_fig)
 
     # paretoThresh = 0.75
     with st.form(key="pareto_clean"):
         paretoThresh = st.number_input(
-            'paretoThresh:',
+            'Pareto Threshold\n(seuclidean distance to the pareto front):',
             value=0.75
+        )
+        timeThresh = st.number_input(
+            'Maximum days between shoreline:',
+            value=180
         )
 
         submitted = st.form_submit_button("Run")
 
         if submitted:
-            plotData = shlData.dropna().copy()
-            plotData.loc[:,'Shoreline'] = -plotData['Shoreline']
+            plotData = shl_data.dropna().copy()
+            plotData.loc[:,'dShl'] = -plotData['dShl']
             # some basic reduction of clearly dodgy data
-            plotData = plotData.loc[(plotData['E']>0.25e6)&(plotData['Shoreline']>1),:]
+            cleanBool = (plotData['E']>0.25e6)&(plotData['dShl']>1)&(plotData['timeDelta']<timeThresh)
+            plotData = plotData.loc[cleanBool,:]
             plotData = find_pareto_front(plotData)
 
             cleanData = plotData.copy()
             cleanData = cleanData.loc[cleanData['paretoDistance']<paretoThresh,:]
-            x, y = cleanData['E'].values, cleanData['Shoreline'].values
+            x, y = cleanData['E'].values, cleanData['dShl'].values
 
             # and trasnform to logspace
             x_log = np.log(x)
@@ -103,25 +115,9 @@ with c30:
             st.session_state.y_log = y_log
 
             log_scale=False
-            fig = plt.figure(figsize=(7, 5))
-            ax1 = fig.add_subplot(111)
-
-            sns.scatterplot(x='E',y='Shoreline',hue='paretoDistance',data=plotData,ax=ax1)
-            sns.scatterplot(x='E',y='Shoreline',color='C2',marker='x',data=plotData.loc[plotData['paretoDistance']<paretoThresh,:],ax=ax1)
-            sns.scatterplot(x='E',y='Shoreline',color='C0',marker='s',data=plotData.loc[plotData['pareto'].astype(bool),:],ax=ax1)
-
-            ax1.set_xlabel('E')
-            ax1.set_ylabel('dShl')
-            # ax1.invert_yaxis()
-            # change axes to log - log scale
-            if log_scale:
-                plt.xscale('log')
-                plt.yscale('log')
-            plt.title('Shoreline change from satelite')
-            ax1.get_legend().remove()
-            plt.legend(loc='center', bbox_to_anchor=(1.15,0.5))
-            st.pyplot(fig=plt.gcf())
-    
+            st.session_state['pareto_fig'] = plot_pareto_points(plotData,pareto_thresh=paretoThresh)
+            # st.pyplot(fig=pareto_fig)
+    st.subheader("Fit a Bayesian Linear Regression model...") 
     with st.form(key="model_fit"):
         # settings 
         num_samples = st.number_input(
@@ -173,9 +169,16 @@ with c30:
                 # dims={"theta": ["school"]},
             )
             # fig = plt.figure(figsize=(10, 7))
-            fig, ax = plt.subplots(3,2,figsize=(10, 7))
+            params_fig, ax = plt.subplots(
+                3,2,
+                figsize=(10, 7))
+            plt.subplots_adjust(
+                hspace=0.5,
+                wspace=0.2
+            )
             az.plot_trace(numpyro_data,axes=ax)
-            st.pyplot(fig=fig)
+            st.session_state['params_fig'] = params_fig
+            # st.pyplot(fig=params_fig)
             
             x_log_out = np.linspace(x_log.min(),x_log.max()+(x_log.max()-x_log.min())*0.25,100)
 
@@ -192,12 +195,13 @@ with c30:
                 xlabel="Energy", ylabel="dShl", title="Regression line with 95% CI"
             )
             st.pyplot(fig=ax.get_figure())
-            ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu))
-            ax.set(
+            reg_ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu))
+            reg_ax.set(
                 xlabel="Energy", ylabel="dShl", title="Regression line with 95% CI"
             )
-            st.pyplot(fig=ax.get_figure())
-
+            st.session_state['regression_fig'] = reg_ax.get_figure()
+            # st.pyplot(fig=ax.get_figure())
+    st.subheader("Predict for a new E...")
     with st.form(key='predict'):
         samples = st.session_state.samples
 
@@ -229,3 +233,13 @@ with c30:
                     np.exp(hpdi_mu[1][0])
                 )
             )
+
+with cOutput:
+    if not st.session_state['data_fig'] is None:
+        st.pyplot(st.session_state['data_fig'])
+    if not st.session_state['pareto_fig'] is None:
+        st.pyplot(st.session_state['pareto_fig'])
+    if not st.session_state['params_fig'] is None:
+        st.pyplot(st.session_state['params_fig'])
+    if not st.session_state['regression_fig'] is None:
+        st.pyplot(st.session_state['regression_fig'])
