@@ -15,6 +15,12 @@ def generate_storm_dataset(shl_data,wave_data):
     '''
     # Prepare the diffstorm_data df
     storm_data = shl_data.copy()
+
+    storm_data = storm_data.diff()
+    storm_data.columns = ['dShl']
+    # define dShl as positive for recession
+    storm_data.loc[:,'dShl'] = -storm_data['dShl']
+
     storm_data['postDate'] = storm_data.index
     storm_data.loc[storm_data.index[1:],'preDate'] = storm_data.index[:-1]
     storm_data.drop(storm_data.index[0],inplace=True)

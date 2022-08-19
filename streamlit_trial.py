@@ -93,26 +93,27 @@ with cInteract:
             value=180
         )
 
+        eThresh = st.number_input(
+            'Minimum energy:',
+            value=0.25e6
+        ) 
+
         submitted = st.form_submit_button("Run")
 
         if submitted:
             plotData = shl_data.dropna().copy()
-            plotData.loc[:,'dShl'] = -plotData['dShl']
             # some basic reduction of clearly dodgy data
-            cleanBool = (plotData['E']>0.25e6)&(plotData['dShl']>1)&(plotData['timeDelta']<timeThresh)
+            cleanBool = (plotData['E']>eThresh)&(plotData['dShl']>1)&(plotData['timeDelta']<timeThresh)
             plotData = plotData.loc[cleanBool,:]
+            # get the pareto front
             plotData = find_pareto_front(plotData)
-
-            cleanData = plotData.copy()
-            cleanData = cleanData.loc[cleanData['paretoDistance']<paretoThresh,:]
+            # now clean based on pareto distance
+            cleanData = plotData.loc[plotData['paretoDistance']<paretoThresh,:].copy()
             x, y = cleanData['E'].values, cleanData['dShl'].values
 
-            # and trasnform to logspace
-            x_log = np.log(x)
-            y_log = np.log(y)
-
-            st.session_state.x_log = x_log
-            st.session_state.y_log = y_log
+            # and transform to logspace and store for later
+            st.session_state.x_log = np.log(x)
+            st.session_state.y_log = np.log(y)
 
             log_scale=False
             st.session_state['pareto_fig'] = plot_pareto_points(plotData,pareto_thresh=paretoThresh)
@@ -148,7 +149,8 @@ with cInteract:
             mcmc_obj.run(
                 rng_key_, energy=x_log, dshl=y_log
             )
-            mcmc_obj.print_summary()
+            print('MCMC Summary - check for Rhat = 1:')
+            st.write(mcmc_obj.print_summary())
             samples = mcmc_obj.get_samples()
 
             st.session_state.samples = samples
@@ -187,15 +189,20 @@ with cInteract:
                 jnp.expand_dims(samples["intercept"], -1)
                 + jnp.expand_dims(samples["coeff1"], -1) * x_log_out
             )
+            sim_dshl = Predictive(linear_model, samples)(
+                rng_key_, energy=x_log_out
+            )
+
 
             mean_mu = jnp.mean(posterior_mu, axis=0)
             hpdi_mu = hpdi(posterior_mu, ci)
-            ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu), log_scale=True)
+            hdpi_sim = hpdi(sim_dshl, ci)
+            ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hdpi_sim), log_scale=True)
             ax.set(
                 xlabel="Energy", ylabel="dShl", title="Regression line with 95% CI"
             )
             st.pyplot(fig=ax.get_figure())
-            reg_ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu))
+            reg_ax = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log_out), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hdpi_sim))
             reg_ax.set(
                 xlabel="Energy", ylabel="dShl", title="Regression line with 95% CI"
             )
@@ -233,6 +240,14 @@ with cInteract:
                     np.exp(hpdi_mu[1][0])
                 )
             )
+        
+        # download model later
+    st.download_button(
+        label="Download model",
+        data=,
+        file_name="{}_lr_model.pkl".format(transect_name)
+    )
+
 
 with cOutput:
     if not st.session_state['data_fig'] is None:

@@ -23,10 +23,7 @@ def load_shoreline_data(transect_name='aus0206-0005',download=True):
     raw_shl_data.index = pd.to_datetime(raw_shl_data.index,utc=True)
     raw_shl_data.columns = ['Shoreline']
     raw_shl_data.index.name = 'Date'
-
-    diff_shl_data = raw_shl_data.diff()
-    diff_shl_data.columns = ['dShl']
-    return diff_shl_data
+    return raw_shl_data
 
 ###############################################################################
 ###############################################################################
