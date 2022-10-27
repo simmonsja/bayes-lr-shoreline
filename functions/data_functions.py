@@ -3,6 +3,8 @@ import urllib.request
 
 import pandas as pd
 
+from functions.analysis_functions import find_pareto_front
+
 ###############################################################################
 ###############################################################################
 
@@ -35,6 +37,22 @@ def load_wave_data(transect_name='aus0206-0005'):
     '''
     raw_wave_data = pd.read_csv('combined_era_data_-34.0_151.5.csv',index_col=0,parse_dates=True)
     return raw_wave_data
+
+###############################################################################
+###############################################################################
+
+def clean_dshoreline_data(data_in,paretoThresh=0.75,timeThresh=150,energyThresh=0.25e6):
+    plotData = data_in.dropna().copy()
+    # some basic reduction of clearly dodgy data
+    cleanBool = (plotData['E']>energyThresh)&(plotData['dShl']>1)&(plotData['timeDelta']<timeThresh)
+    plotData = plotData.loc[cleanBool,:]
+    # get the pareto front
+    plotData = find_pareto_front(plotData)
+    # now clean based on pareto distance
+    cleanData = plotData.loc[plotData['paretoDistance']<paretoThresh,:].copy()
+    x, y = cleanData['E'].values, cleanData['dShl'].values
+    return x, y, plotData
+
 
 ###############################################################################
 ###############################################################################

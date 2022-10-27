@@ -1,9 +1,11 @@
+from tkinter import font
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import seaborn as sns
+import matplotlib.patches as mpatches
 
-
+sns.set(font_scale=1.2)
 sns.set_style('whitegrid')
 sns.set_context('talk')
 
@@ -43,23 +45,38 @@ def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci,log_scale=False):
 ###############################################################################
 
 def plot_pareto_points(plotData,hue='paretoDistance',pareto_thresh=None,log_scale=False):
+    sns.set(font_scale=1.2)
+    sns.set_style('whitegrid')
+    sns.set_context('talk')
+
     fig = plt.figure(figsize=(7, 5))
     ax1 = fig.add_subplot(111)
 
     sns.scatterplot(x='E',y='dShl',hue=hue,data=plotData,ax=ax1)
     if not pareto_thresh is None:
-        sns.scatterplot(x='E',y='dShl',color='C1',data=plotData.loc[plotData['paretoDistance']<pareto_thresh,:],ax=ax1)
-        sns.scatterplot(x='E',y='dShl',color='C0',marker='s',data=plotData.loc[plotData['pareto'].astype(bool),:],ax=ax1)
-    ax1.set_xlabel('E')
-    ax1.set_ylabel('dShl')
+        selax = sns.scatterplot(x='E',y='dShl',color='C2',data=plotData.loc[plotData['paretoDistance']<pareto_thresh,:],ax=ax1)
+        pfax = sns.scatterplot(x='E',y='dShl',color='C0',marker='s',data=plotData.loc[plotData['pareto'].astype(bool),:],ax=ax1)
+    ax1.set_xlabel('E',labelpad=10)
+    ax1.set_ylabel('dShl',labelpad=10)
     # ax1.invert_yaxis()
     # change axes to log - log scale
     if log_scale:
         plt.xscale('log')
         plt.yscale('log')
-    plt.title('Shoreline change from satellite')
-    ax1.get_legend().remove()
-    plt.legend(loc='center', bbox_to_anchor=(1.15,0.5))
+    plt.title('Shoreline change from satellite', pad=15)
+    handles, labels = ax1.get_legend_handles_labels()
+    selhandles, _ = selax.get_legend_handles_labels()
+    pfhandles, _ = pfax.get_legend_handles_labels()
+
+    selhandles = mpatches.Patch(color='C2', label='Selected')
+    pfhandles = mpatches.Patch(color='C0', label='Pareto Front')
+
+    plt.legend(
+        handles = handles + [selhandles,pfhandles],
+        labels = labels + ['Selected points','Pareto front'],
+        loc='center left', bbox_to_anchor=(1.05,0.5),
+        title='Pareto Distance')
+
     return fig
 
 ###############################################################################

@@ -178,7 +178,12 @@ with cInteract:
                 hspace=0.5,
                 wspace=0.2
             )
-            az.plot_trace(numpyro_data,axes=ax)
+            params_ax = az.plot_trace(
+                numpyro_data,
+                var_names=['a','b','sigma'],
+                figsize=(10,12)
+            )
+            # params_fig = params_ax.get_figure()
             st.session_state['params_fig'] = params_fig
             # st.pyplot(fig=params_fig)
             
@@ -186,12 +191,12 @@ with cInteract:
 
             # Compute empirical posterior distribution over mu
             posterior_mu = (
-                jnp.expand_dims(samples["intercept"], -1)
-                + jnp.expand_dims(samples["coeff1"], -1) * x_log_out
+                jnp.expand_dims(samples["a"], -1)
+                + jnp.expand_dims(samples["b"], -1) * x_log_out
             )
             sim_dshl = Predictive(linear_model, samples)(
                 rng_key_, energy=x_log_out
-            )
+            )['dshl']
 
 
             mean_mu = jnp.mean(posterior_mu, axis=0)
@@ -223,8 +228,8 @@ with cInteract:
             x_log = np.log(x_in)
             # Compute empirical posterior distribution over mu
             posterior_mu = (
-                jnp.expand_dims(samples["intercept"], -1)
-                + jnp.expand_dims(samples["coeff1"], -1) * x_log
+                jnp.expand_dims(samples["a"], -1)
+                + jnp.expand_dims(samples["b"], -1) * x_log
             )
 
             mean_mu = jnp.mean(posterior_mu, axis=0)
@@ -241,12 +246,12 @@ with cInteract:
                 )
             )
         
-        # download model later
-    st.download_button(
-        label="Download model",
-        data=,
-        file_name="{}_lr_model.pkl".format(transect_name)
-    )
+    #     # download model later
+    # st.download_button(
+    #     label="Download model",
+    #     data=,
+    #     file_name="{}_lr_model.pkl".format(transect_name)
+    # )
 
 
 with cOutput:
