@@ -24,7 +24,7 @@ def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci,log_scale=False):
     predci = y_predci[:, idx_mod]
 
     # Plot
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 6))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5, 4))
     if log_scale:
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -82,7 +82,7 @@ def plot_pareto_points(plotData,hue='paretoDistance',pareto_thresh=None,log_scal
 ###############################################################################
 ###############################################################################
 
-def draw_fit(xObs,yObs,xPred,yPred,ySample=None,yMAP=None,**kwargs):
+def draw_fit(x_obs,y_obs,x_pred,y_pred = None,y_sample=None,**kwargs):
     fig = plt.figure(figsize=(7, 5))
     ax1 = fig.add_subplot(111)
 
@@ -93,19 +93,21 @@ def draw_fit(xObs,yObs,xPred,yPred,ySample=None,yMAP=None,**kwargs):
     # else:
     #     ax1.plot(xSample, sampleyMean)#,label='Samples')
 
-    if not ySample is None:
-        ax1.plot(xPred, ySample[0,:].T,'-',color='xkcd:light grey',alpha=0.4,label='Samples')
-        ax1.plot(xPred, ySample[1:,:].T,'-',color='xkcd:light grey',alpha=0.4)
+    if not y_sample is None:
+        ax1.plot(x_pred, y_sample[0,:].T,'-',color='xkcd:light grey',alpha=0.4,label='Samples')
+        ax1.plot(x_pred, y_sample[1:,:].T,'-',color='xkcd:light grey',alpha=0.4)
 
-    if not yMAP is None:
-        ax1.plot(xPred, yMAP.T,'-',color='xkcd:red',label='MAP fit')
+
+    # if not y is None:
+    ax1.plot(x_obs, y_obs, 'o',color='xkcd:dark grey',label='Observed')
+
+    if not y_pred is None:
+        ax1.plot(x_pred, y_pred, 'C0', label='Predicted')
 
     # # plot mean
     # ax1.plot(xSample, predyMean, 'k', label='Mean')
 
-    # if not y is None:
-    ax1.plot(xObs, yObs, 'o',color='xkcd:dark grey',label='Observed')
-    ax1.plot(xPred, yPred, 'C0', label='Predicted')
+    
     
     ax1.set_xlabel('x')
     ax1.set_ylabel('y')
