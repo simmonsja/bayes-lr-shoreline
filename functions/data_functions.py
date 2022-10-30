@@ -16,7 +16,7 @@ def load_shoreline_data(transect_name='aus0206-0005',download=True):
     http://coastsat.wrl.unsw.edu.au/
     '''
     cs_source = 'http://coastsat.wrl.unsw.edu.au/time-series/{}/'
-    tmpLoc =  "{}.csv".format(transect_name)
+    tmpLoc =  os.path.join(".","data","coastsat","{}.csv".format(transect_name))
 
     if download and not os.path.exists(tmpLoc):
         urllib.request.urlretrieve(cs_source.format(transect_name), tmpLoc)
@@ -35,7 +35,10 @@ def load_wave_data(transect_name='aus0206-0005'):
     Load the wave data - this should lookup the appropriate ERA5 
     collection from the transect name.
     '''
-    raw_wave_data = pd.read_csv('combined_era_data_-34.0_151.5.csv',index_col=0,parse_dates=True)
+    # load the wave data
+    buoy_name = 'combined_era_data_-34.0_151.5'
+    data_loc = os.path.join(".","data","waves","{}.csv".format(buoy_name))
+    raw_wave_data = pd.read_csv(data_loc,index_col=0,parse_dates=True)
     return raw_wave_data
 
 ###############################################################################
