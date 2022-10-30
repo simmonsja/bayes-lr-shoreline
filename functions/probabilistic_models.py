@@ -13,14 +13,15 @@ def linear_model(energy=None,dshl=None):
         dshl: observed shoreline change
     '''
     # Define priors
-    coeff1 = numpyro.sample("b",dist.Normal(0.5, 0.2))
-    intercept = numpyro.sample("a",dist.Normal(0, 10))
-    sigma = numpyro.sample("sigma", dist.HalfCauchy(2))
+    a = numpyro.sample("a",dist.Normal(0, 10))
+    b = numpyro.sample("b",dist.Normal(1, 0.5))
 
-    mu = coeff1 * energy + intercept
+    sigma = numpyro.sample("sigma", dist.Exponential(1))
+    mu = a + b * energy
+    # store the model prediction before we account for the error
     numpyro.deterministic("mu", mu)
-
-    numpyro.sample("dshl_modelled", dist.Normal(mu, sigma), obs=dshl)
+    # and then finally sample so we can compare to our observations
+    dshl_modelled = numpyro.sample("dshl_modelled", dist.Normal(mu, sigma), obs=dshl)
 
 ###############################################################################
 ###############################################################################

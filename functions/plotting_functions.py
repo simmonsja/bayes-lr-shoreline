@@ -49,6 +49,7 @@ def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci, ci, log_scale=Fal
     ax.set_title(kwargs.get('title', 'Regression line with {}% CI'.format(int(ci * 100))), pad=15)
 
     ax.legend(loc='center left', bbox_to_anchor=(1.05,0.5))
+    return fig
 
 ###############################################################################
 ###############################################################################
@@ -74,17 +75,24 @@ def plot_pareto_points(plotData,hue='paretoDistance',pareto_thresh=None,log_scal
         plt.yscale('log')
     plt.title('Shoreline change from coastsat data', pad=15)
     handles, labels = ax1.get_legend_handles_labels()
-    selhandles, _ = selax.get_legend_handles_labels()
-    pfhandles, _ = pfax.get_legend_handles_labels()
+    if not pareto_thresh is None:
+        selhandles, _ = selax.get_legend_handles_labels()
+        pfhandles, _ = pfax.get_legend_handles_labels()
 
     selhandles = mpatches.Patch(color='C2', label='Selected')
     pfhandles = mpatches.Patch(color='C0', label='Pareto Front')
 
-    plt.legend(
-        handles = handles + [selhandles,pfhandles],
-        labels = labels + ['Selected points','Pareto front'],
-        loc='center left', bbox_to_anchor=(1.05,0.5),
-        title='Pareto Distance')
+    if not pareto_thresh is None:
+        plt.legend(
+            handles = handles + [selhandles,pfhandles],
+            labels = labels + ['Selected points','Pareto front'],
+            loc='center left', bbox_to_anchor=(1.05,0.5),
+            title='Pareto Distance')
+    else:
+        plt.legend(
+            loc='center left', bbox_to_anchor=(1.05,0.5),
+            title='Pareto Distance'
+        )
 
     return fig
 
