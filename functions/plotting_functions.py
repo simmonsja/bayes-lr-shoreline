@@ -12,16 +12,13 @@ sns.set_context('talk')
 ###############################################################################
 ###############################################################################
 
-def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci,log_scale=False):
+def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci, ci, log_scale=False, **kwargs):
+    '''
+    Bit of a messy function - could do with a cleaning of the inputs.
+    '''
     # Sort values for plotting by x axis
-    idx = np.argsort(x)
-    idx_mod = np.argsort(x_mod)
-    marriage = x[idx]
-    plot_x_mod = x_mod[idx_mod]
-    mean = y_mean[idx_mod]
-    hpdi = y_hpdi[:, idx_mod]
-    divorce = y_obs[idx]
-    predci = y_predci[:, idx_mod]
+    sns.set(font_scale=1.2)
+    sns.set_style('whitegrid')
 
     # Plot
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(5, 4))
@@ -34,12 +31,24 @@ def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci,log_scale=False):
         locmin = mticker.MultipleLocator(1e6)  
         ax.xaxis.set_major_locator(locmin)
         ax.xaxis.set_major_formatter(mticker.ScalarFormatter()) 
-    ax.plot(plot_x_mod, mean)
-    ax.plot(marriage, divorce, "o")
-    ax.fill_between(plot_x_mod, predci[0], predci[1], alpha=0.2, color='C1', interpolate=True)
-    ax.fill_between(plot_x_mod, hpdi[0], hpdi[1], alpha=0.4, color='C0', interpolate=True)
+    ax.plot(x_mod, y_mean)
+    ax.plot(x, y_obs, "o")
+    ax.fill_between(
+        x_mod, y_predci[0], y_predci[1], 
+        alpha=0.2, color='C1', interpolate=True,
+        label="Prediction\nuncertainty"
+    )
+    ax.fill_between(
+        x_mod, y_hpdi[0], y_hpdi[1],
+        alpha=0.4, color='C0', interpolate=True,
+        label="Model\nuncertainty"
+    )
 
-    return ax
+    ax.set_xlabel(kwargs.get('xlabel', 'Energy'), labelpad=10)
+    ax.set_ylabel(kwargs.get('ylabel', 'Shoreline Change'), labelpad=10)
+    ax.set_title(kwargs.get('title', 'Regression line with {}% CI'.format(int(ci * 100))), pad=15)
+
+    ax.legend(loc='center left', bbox_to_anchor=(1.05,0.5))
 
 ###############################################################################
 ###############################################################################
@@ -63,7 +72,7 @@ def plot_pareto_points(plotData,hue='paretoDistance',pareto_thresh=None,log_scal
     if log_scale:
         plt.xscale('log')
         plt.yscale('log')
-    plt.title('Shoreline change from satellite', pad=15)
+    plt.title('Shoreline change from coastsat data', pad=15)
     handles, labels = ax1.get_legend_handles_labels()
     selhandles, _ = selax.get_legend_handles_labels()
     pfhandles, _ = pfax.get_legend_handles_labels()
@@ -109,14 +118,14 @@ def draw_fit(x_obs,y_obs,x_pred,y_pred = None,y_sample=None,**kwargs):
 
     
     
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
+    ax1.set_xlabel(kwargs.get('xlabel','Energy'),labelpad=10)
+    ax1.set_ylabel(kwargs.get('ylabel','Shoreline Change'),labelpad=10)
 
     if kwargs.get('log_scale',False):
         ax1.set_xscale('log')
         ax1.set_yscale('log')
 
-    ax1.set_title(kwargs.get('title','Power Law Distribution Fit'))
+    ax1.set_title(kwargs.get('title','Power Law Distribution Fit'),pad=10)
     # place legend outside the plot
     plt.legend(loc='center', bbox_to_anchor=(1.2, 0.5))
     plt.show()
