@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
-
+import pandas as pd
 
 ###############################################################################
 ###############################################################################
@@ -60,6 +60,35 @@ def calculate_wave_energy(waveIn):
     stormCriteria = waveIn['Hsig']>3.0 #m
     energy = np.sum(waveIn.loc[stormCriteria,'Hsig']**2)*rho*g*dt*(1/16)
     return energy
+
+
+###############################################################################
+###############################################################################
+
+def calculate_storm_energy(hsig_max, storm_duration):
+    '''
+    Using this, the energy will be calculated for a triangular storm event. 
+    We will assume the wave height to be defined as a storm is $H_{sig} = 3$ m 
+    and the storm will increase in wave height to peak halfway through the event 
+    with the specified maximum $H_{sig}$.
+    '''
+    storm_duration = int(storm_duration)
+    dummy_time = pd.to_datetime('2022-01-01 00:00:00')
+    dummy_delta = pd.to_timedelta(storm_duration,unit='H')
+    times = pd.date_range(dummy_time,dummy_time+dummy_delta,freq='H')
+    #simple triangular storm
+    uptick = np.floor(storm_duration/2).astype(int)
+    waves = np.zeros((storm_duration,))
+    waves[:uptick] = np.linspace(3,hsig_max,uptick)
+    waves[uptick:] = np.linspace(hsig_max,3,storm_duration-uptick)
+
+    wave_data = pd.DataFrame(
+        {'Hsig':waves},
+        index=times[:-1]
+    )
+    # now use our handy energy calc above
+    dummy_energy = calculate_wave_energy(wave_data)
+    return dummy_energy
 
 ###############################################################################
 ###############################################################################

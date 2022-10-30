@@ -20,7 +20,7 @@ def linear_model(energy=None,dshl=None):
     mu = coeff1 * energy + intercept
     numpyro.deterministic("mu", mu)
 
-    numpyro.sample("dshl", dist.Normal(mu, sigma), obs=dshl)
+    numpyro.sample("dshl_modelled", dist.Normal(mu, sigma), obs=dshl)
 
 ###############################################################################
 ###############################################################################
