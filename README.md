@@ -17,8 +17,3 @@ Disclaimers:
 - This is an overly simplified analysis for the purpose of demonstrating uncertainty quantification (via Bayesian inference). 
 - It was developed purely for practice with NumPyro and streamlit.
 - Model predicitons of shoreline change should not be relied upon for real-world application.
-
-## TO DO
-- [X] Add simulation uncertainty to the visualisation
-- [X] Align priors to be reasonable
-- [ ] Clean up streamlit code

@@ -179,7 +179,7 @@ with cInteract:
         # define the sampler - No U-Turn Sampler (NUTS)
         kernel = NUTS(linear_model)
 
-       submitted_model = st.form_submit_button("Run")
+        submitted_model = st.form_submit_button("Run")
 
         if submitted_model:
             # define the mcmc wrapper  
