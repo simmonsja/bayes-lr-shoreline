@@ -17,7 +17,7 @@ RUN curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.s
 WORKDIR /build
 RUN conda install python=3.9
 RUN conda install numpy seaborn scipy scikit-learn pandas
-RUN conda install ipywidgets 
+RUN conda install ipywidgets
 RUN conda install -c conda-forge numpyro
 RUN conda install -c conda-forge arviz
 RUN mkdir /data

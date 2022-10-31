@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 import arviz as az
 import streamlit as st
+import copy
 
 sns.set_style('whitegrid')
 sns.set_context('talk')
@@ -48,30 +49,32 @@ st.set_page_config(
 # update_width()
 
 st.title("Storm Erosion Model with Uncertainty")
-st.write(
-    '''
-    In this streamlit, we will fit a Bayesian Linear Regression to predict shoreline change due to coastal storms. 
-    
-    This will mirror the simple empirical model developed by Harley et al. (2009) of the form: 
+st.write('For a more detailed explanation, please see the associated [Github repo](https://github.com/simmonsja/bayes-shore/). Expand the sections below to view the outputs.')
+with st.expander('Model Explanation'):
+    st.write(
+        '''
+        In this streamlit, we will fit a Bayesian Linear Regression to predict shoreline change due to coastal storms. 
+        
+        This will mirror the simple empirical model developed by Harley et al. (2009) of the form: 
 
-    $$\Delta W=aE^b$$
-    
-    where $\Delta W$ is the change in shoreline position, $E$ is the storm energy, 
-    and $a$ and $b$ are learnable model parameters.
-    
-    To provide uncertainty alongside the model prediction, we will use the probabilistic programming language
-    [NumPyro](https://numpyro.readthedocs.io/en/stable/) to fit a Bayesian Linear Regression.
+        $$\Delta W=aE^b$$
+        
+        where $\Delta W$ is the change in shoreline position, $E$ is the storm energy, 
+        and $a$ and $b$ are learnable model parameters.
+        
+        To provide uncertainty alongside the model prediction, we will use the probabilistic programming language
+        [NumPyro](https://numpyro.readthedocs.io/en/stable/) to fit a Bayesian Linear Regression.
 
-    Disclaimers:
+        Disclaimers:
 
-    - This is an overly simplified analysis for the purpose of demonstrating uncertainty quantification (via Bayesian inference). 
-    - It was developed purely for practice with NumPyro and streamlit.
-    - Model predicitons of shoreline change should not be relied upon for real-world application.
-    '''
-)
+        - This is an overly simplified analysis for the purpose of demonstrating uncertainty quantification (via Bayesian inference). 
+        - It was developed purely for practice with NumPyro and streamlit.
+        - Model predicitons of shoreline change should not be relied upon for real-world application.
+        '''
+    )
 
 
-cInteract, cOutput = st.columns([1, 3])
+_, cInteract, cOutput = st.columns([1, 2, 1])
 
 # Initialize some states which will flow through
 if 'x_log' not in st.session_state:
@@ -84,10 +87,10 @@ if 'data_fig' not in st.session_state:
     st.session_state['data_fig'] = None
 if 'pareto_fig' not in st.session_state:
     st.session_state['pareto_fig'] = None
-if 'params_fig' not in st.session_state:
-    st.session_state['params_fig'] = None
 if 'regression_fig 'not in st.session_state:
     st.session_state['regression_fig'] = None
+if 'params_fig' not in st.session_state:
+    st.session_state['params_fig'] = None
 
 # Load data - group these calls together
 @st.experimental_singleton
@@ -115,8 +118,12 @@ with cInteract:
     shl_data = load_data(transect_name)
     
     # now we will plot the points for cleaning
-    st.write('All data points:')
     st.session_state['data_fig'] = plot_pareto_points(shl_data,hue='timeDelta')
+
+    with st.expander('Raw data plot', expanded=True):
+        st.write('All data points:')
+        if not st.session_state['data_fig'] is None:
+            st.pyplot(st.session_state['data_fig']) 
 
     with st.form(key="pareto_clean"):
         st.write('Here we will use some thresholds to clean the data.')
@@ -142,18 +149,23 @@ with cInteract:
             # and transform to logspace and store for later
             st.session_state.x_log = np.log(x)
             st.session_state.y_log = np.log(y)
-            st.write('Selected points based on thresholds:')
             st.session_state['pareto_fig'] = plot_pareto_points(plot_data,pareto_thresh=pareto_thresh)
             # st.pyplot(fig=pareto_fig)
+
+    with st.expander('Selected data plot', expanded=True):
+        if not st.session_state['pareto_fig'] is None:
+            st.write('Selected points based on thresholds:')
+            st.pyplot(st.session_state['pareto_fig'])
+
     st.subheader("Fit a Bayesian Linear Regression model...") 
     with st.form(key="model_fit"):
         # settings 
         num_samples = st.number_input(
             'Number of MCMC samples:', 
             value=1000, 
-            min_value=1000, 
-            max_value=100000,
-            step=1000
+            min_value=500, 
+            max_value=40000,
+            step=500
         )
         burnin = int(0.25 * num_samples)
         ci = 0.68
@@ -167,20 +179,22 @@ with cInteract:
         # define the sampler - No U-Turn Sampler (NUTS)
         kernel = NUTS(linear_model)
 
-        submitted = st.form_submit_button("Run")
+       submitted_model = st.form_submit_button("Run")
 
-        if submitted:
-            # define the mcmc wrapper
+        if submitted_model:
+            # define the mcmc wrapper  
             mcmc_obj = MCMC(kernel, num_warmup=burnin, num_samples=num_samples)
-
-            mcmc_obj.run(
-                rng_key_, energy=x_log, dshl=y_log
-            )
-            print('MCMC Summary - check for Rhat = 1:')
-            st.write(mcmc_obj.print_summary())
+            with st.spinner('Please wait while the MCMC sampler runs...'):
+                mcmc_obj.run(
+                    rng_key_, energy=x_log, dshl=y_log
+                )
+            st.success('MCMC sampling done!')
+            # print('MCMC Summary - check for Rhat = 1:')
+            mcmc_summary = mcmc_obj.print_summary()
+            # st.write(mcmc_summary)
             samples = mcmc_obj.get_samples()
 
-            st.session_state.samples = samples
+            st.session_state['samples'] = samples
 
             # get the samples for predictive uncertainty (our linear model + error)
             posterior_predictive = Predictive(linear_model, samples)(
@@ -196,9 +210,14 @@ with cInteract:
                 mcmc_obj,
                 posterior_predictive=posterior_predictive,
             )
+        
+            # Now we will plot the results in log-log scale and on the original scale
+            log_reg_fig = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hpdi_sim_y), ci, log_scale=True)
+            reg_fig = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hpdi_sim_y), ci)
+
+            st.session_state['regression_fig'] = reg_fig
 
             # Plot the parameter traces
-            st.write('Posterior parameter distributions and sampling traces:')
             params_ax = az.plot_trace(
                 arviz_posterior,
                 var_names=['a','b','sigma'],
@@ -208,32 +227,38 @@ with cInteract:
                 hspace=0.5,
                 wspace=0.2
             )
-            # params_fig = params_ax.get_figure()
+
             st.session_state['params_fig'] = plt.gcf()
-            # st.pyplot(fig=params_fig)
 
-            st.write('Model fit with uncertainty:')
-            # Now we will plot the results in log-log scale and on the original scale
-            log_reg_fig = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hpdi_sim_y), ci, log_scale=True)
-            reg_fig = plot_regression(np.exp(x_log), np.exp(y_log), np.exp(x_log), np.exp(mean_mu), np.exp(hpdi_mu), np.exp(hpdi_sim_y), ci)
+        with st.expander('Model fit plot', expanded=True):
+            if not st.session_state['regression_fig'] is None:
+                st.write('Model fit with uncertainty:')
+                st.pyplot(st.session_state['regression_fig'])
+        with st.expander('Posterior parameter distribution plots'):
+            if not st.session_state['params_fig'] is None:
+                st.write(
+                    '''
+                    If you're interested in checking the MCMC sampling, you can see the 
+                    traces of the parameters here. The parameter distrbituions give us an idea
+                    of the uncertainty in our three model parameters. Check the Github repo for more
+                    resources on Bayesian inference.
+                    '''
+                )
+                st.pyplot(st.session_state['params_fig'])
 
-            st.pyplot(fig=log_reg_fig)
-
-            st.session_state['regression_fig'] = reg_fig
-            # st.pyplot(fig=ax.get_figure())
-    st.subheader("Predict for a new E...")
+    st.subheader("Predict for a given storm energy...")
     with st.form(key='predict'):
-        samples = st.session_state.samples
+        samples = st.session_state['samples']
 
         x_in = st.number_input(
-            'Event energy:',
+            'Event energy (Jh/m^2):',
             value=0.8e6,
             step=25000.0
         )
 
-        submitted = st.form_submit_button("Run")
+        submitted_energy = st.form_submit_button("Run")
 
-        if submitted:
+        if submitted_energy:
             # make a prediction with our model
             event_predictive = Predictive(linear_model, samples)(
                 rng_key_, energy=np.log(np.array(x_in)))
@@ -244,22 +269,22 @@ with cInteract:
             st.write('Prediction {:.0f}% Credibilty Interval: {:.2f} - {:.2f} m'.format(ci*100,*np.exp(hpdi(event_predictive['dshl_modelled'], ci))))
 
         
-    st.subheader("Predict for a new Hsig max and storm duration...")
+    st.subheader("Predict for a given maximum Hsig and storm duration...")
     with st.form(key='predict_hsig'):
-        samples = st.session_state.samples
+        samples = st.session_state['samples']
 
         hsig_in = st.number_input(
-            'Hsig maximum:',
+            'Hsig (m) maximum:',
             value=6.0
         )
         dur_in = st.number_input(
-            'Storm duration:',
+            'Storm duration (hours):',
             value=48
         )
 
-        submitted = st.form_submit_button("Run")
+        submitted_hsig = st.form_submit_button("Run")
 
-        if submitted:
+        if submitted_hsig:
             event_energy = calculate_storm_energy(hsig_in, dur_in)
 
             # make a prediction with our model
@@ -271,20 +296,9 @@ with cInteract:
             st.write('Model {:.0f}% Credibilty Interval: {:.2f} - {:.2f} m'.format(ci*100,*np.exp(hpdi(event_predictive['mu'], ci))))
             st.write('Prediction {:.0f}% Credibilty Interval: {:.2f} - {:.2f} m'.format(ci*100,*np.exp(hpdi(event_predictive['dshl_modelled'], ci))))
 
-    # download model later
+    # download model - maybe I can implement this later on
     # st.download_button(
     #     label="Download model",
     #     data=,
     #     file_name="{}_lr_model.pkl".format(transect_name)
     # )
-
-
-with cOutput:
-    if not st.session_state['data_fig'] is None:
-        st.pyplot(st.session_state['data_fig'])
-    if not st.session_state['pareto_fig'] is None:
-        st.pyplot(st.session_state['pareto_fig'])
-    if not st.session_state['params_fig'] is None:
-        st.pyplot(st.session_state['params_fig'])
-    if not st.session_state['regression_fig'] is None:
-        st.pyplot(st.session_state['regression_fig'])

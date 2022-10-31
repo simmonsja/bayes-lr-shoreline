@@ -44,8 +44,8 @@ def plot_regression(x, y_obs, x_mod, y_mean, y_hpdi, y_predci, ci, log_scale=Fal
         label="Model\nuncertainty"
     )
 
-    ax.set_xlabel(kwargs.get('xlabel', 'Energy'), labelpad=10)
-    ax.set_ylabel(kwargs.get('ylabel', 'Shoreline Change'), labelpad=10)
+    ax.set_xlabel(kwargs.get('xlabel', 'Energy (Jh/m^2)'), labelpad=10)
+    ax.set_ylabel(kwargs.get('ylabel', 'Shoreline Change (m)'), labelpad=10)
     ax.set_title(kwargs.get('title', 'Regression line with {}% CI'.format(int(ci * 100))), pad=15)
 
     ax.legend(loc='center left', bbox_to_anchor=(1.05,0.5))
@@ -61,13 +61,12 @@ def plot_pareto_points(plotData,hue='paretoDistance',pareto_thresh=None,log_scal
 
     fig = plt.figure(figsize=(7, 5))
     ax1 = fig.add_subplot(111)
-
     sns.scatterplot(x='E',y='dShl',hue=hue,data=plotData,ax=ax1)
     if not pareto_thresh is None:
         selax = sns.scatterplot(x='E',y='dShl',color='C2',data=plotData.loc[plotData['paretoDistance']<pareto_thresh,:],ax=ax1)
         pfax = sns.scatterplot(x='E',y='dShl',color='C0',marker='s',data=plotData.loc[plotData['pareto'].astype(bool),:],ax=ax1)
-    ax1.set_xlabel('E',labelpad=10)
-    ax1.set_ylabel('dShl',labelpad=10)
+    ax1.set_xlabel(r'Energy (Jh/m^2)',labelpad=10)
+    ax1.set_ylabel('dShl (m)',labelpad=10)
     # ax1.invert_yaxis()
     # change axes to log - log scale
     if log_scale:
@@ -114,7 +113,6 @@ def draw_fit(x_obs,y_obs,x_pred,y_pred = None,y_sample=None,**kwargs):
         ax1.plot(x_pred, y_sample[0,:].T,'-',color='xkcd:light grey',alpha=0.4,label='Samples')
         ax1.plot(x_pred, y_sample[1:,:].T,'-',color='xkcd:light grey',alpha=0.4)
 
-
     # if not y is None:
     ax1.plot(x_obs, y_obs, 'o',color='xkcd:dark grey',label='Observed')
 
@@ -124,10 +122,8 @@ def draw_fit(x_obs,y_obs,x_pred,y_pred = None,y_sample=None,**kwargs):
     # # plot mean
     # ax1.plot(xSample, predyMean, 'k', label='Mean')
 
-    
-    
-    ax1.set_xlabel(kwargs.get('xlabel','Energy'),labelpad=10)
-    ax1.set_ylabel(kwargs.get('ylabel','Shoreline Change'),labelpad=10)
+    ax1.set_xlabel(kwargs.get('xlabel','Energy (Jh/m^2)'),labelpad=10)
+    ax1.set_ylabel(kwargs.get('ylabel','Shoreline Change (m)'),labelpad=10)
 
     if kwargs.get('log_scale',False):
         ax1.set_xscale('log')

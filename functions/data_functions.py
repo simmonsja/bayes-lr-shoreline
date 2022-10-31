@@ -35,6 +35,26 @@ def load_wave_data(transect_name='aus0206-0005'):
     Load the wave data - this should lookup the appropriate ERA5 
     collection from the transect name.
     '''
+    # load the location data - geopandas was being a pain in docker
+    # transect_loc = os.path.join(".","data","CoastSat_transect_layer.geojson")
+    # # import geojson
+    # transects = gpd.read_file(transect_loc,driver='GeoJSON')
+    # au_transects = transects.query('SiteId.str.startswith("aus").values')
+    # # extract the lat lon to a new column
+    # au_transects.loc[:,'longitude'] = au_transects['geometry'].apply(lambda x: (x.xy[0][0]))
+    # au_transects.loc[:,'latitutde'] = au_transects['geometry'].apply(lambda x: (x.xy[1][0]))
+    # transects_out = au_transects[['SiteId','TransectId','Orientation','longitude','latitutde']]
+    # transects_out.to_csv(os.path.join(".","data","CoastSat_transect_layer.csv"))
+    
+    # load the transect locations
+    transect_loc = os.path.join(".","data","CoastSat_transect_layer.csv")
+    transects = pd.read_csv(transect_loc,index_col=0)
+    transects.set_index('TransectId',inplace=True)
+    if not transect_name in transects.index:
+        raise ValueError("Transect name not found - please select an Australian transect")
+    lat = transects.loc[transect_name,'latitutde']
+    lon = transects.loc[transect_name,'longitude']
+
     # load the wave data
     buoy_name = 'combined_era_data_-34.0_151.5'
     data_loc = os.path.join(".","data","waves","{}.csv".format(buoy_name))
