@@ -1,7 +1,6 @@
 name: bayesshore
 channels:
   - defaults
-  - conda-forge
 dependencies:
   - python=3.9
   - seaborn
@@ -9,7 +8,7 @@ dependencies:
   - ipywidgets
   - jupyterlab
   - scikit-learn
-  - conda-forge::numpyro
-  - conda-forge::arviz
+  - numpyro
+  - arviz
   - pip:
     - streamlit
