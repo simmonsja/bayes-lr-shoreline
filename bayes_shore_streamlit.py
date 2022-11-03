@@ -49,7 +49,7 @@ st.set_page_config(
 # update_width()
 
 st.title("Storm Erosion Model with Uncertainty")
-st.write('For a more detailed explanation, please see the associated [Github repo](https://github.com/simmonsja/bayes-shore/). Expand the sections below to view the outputs.')
+st.write('For a more detailed explanation, please see the associated [Github repo](https://github.com/simmonsja/bayes-lr-shoreline). Expand the sections below to view the outputs.')
 with st.expander('Model Explanation'):
     st.write(
         '''

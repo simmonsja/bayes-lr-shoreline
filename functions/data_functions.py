@@ -1,6 +1,7 @@
 import os
 import urllib.request
 
+import numpy as np
 import pandas as pd
 
 from functions.analysis_functions import find_pareto_front
@@ -22,6 +23,9 @@ def load_shoreline_data(transect_name='aus0206-0005',download=True):
         urllib.request.urlretrieve(cs_source.format(transect_name), tmpLoc)
 
     raw_shl_data = pd.read_csv(tmpLoc,parse_dates=True,index_col=0,header=None)
+    # make sure we don't accumulate a tonne - I think i could just parse from the url
+    # but lets just go with this for now
+    os.remove(tmpLoc)
     raw_shl_data.index = pd.to_datetime(raw_shl_data.index,utc=True)
     raw_shl_data.columns = ['Shoreline']
     raw_shl_data.index.name = 'Date'
@@ -53,10 +57,16 @@ def load_wave_data(transect_name='aus0206-0005'):
     if not transect_name in transects.index:
         raise ValueError("Transect name not found - please select an Australian transect")
     lat = transects.loc[transect_name,'latitutde']
-    lon = transects.loc[transect_name,'longitude']
+    # lon = transects.loc[transect_name,'longitude']
 
+    wave_data_lat = np.array([-27.0,-28.0,-29.0,-30.0,-31.0,-32.0,-33.0,-34.0,-35.0,-36.0,-37.0])
+    wave_data_lon = np.array([153.5,153.5,153.5,153.5,153.5,153.0,152.0,151.5,151.0,150.5,150.0])
+
+    # find the closest by lat
+    lat_idx = np.argmin(np.abs(wave_data_lat-lat))
+    
     # load the wave data
-    buoy_name = 'combined_era_data_-34.0_151.5'
+    buoy_name = 'era5_{}_{}'.format(wave_data_lat[lat_idx],wave_data_lon[lat_idx])
     data_loc = os.path.join(".","data","waves","{}.csv".format(buoy_name))
     raw_wave_data = pd.read_csv(data_loc,index_col=0,parse_dates=True)
     return raw_wave_data
