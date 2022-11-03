@@ -69,6 +69,8 @@ def load_wave_data(transect_name='aus0206-0005'):
     buoy_name = 'era5_{}_{}'.format(wave_data_lat[lat_idx],wave_data_lon[lat_idx])
     data_loc = os.path.join(".","data","waves","{}.csv".format(buoy_name))
     raw_wave_data = pd.read_csv(data_loc,index_col=0,parse_dates=True)
+    # make sure this is reasonably named
+    raw_wave_data.rename(columns={'significant_height_of_wind_and_swell_waves':'Hsig'},inplace=True)
     return raw_wave_data
 
 ###############################################################################
