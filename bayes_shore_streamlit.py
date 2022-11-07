@@ -67,9 +67,9 @@ with st.expander('Model Explanation'):
 
         Disclaimers:
 
-        - This is an overly simplified analysis for the purpose of demonstrating uncertainty quantification (via Bayesian inference). 
-        - It was developed purely for practice with NumPyro and streamlit.
-        - Model predicitons of shoreline change should not be relied upon for real-world application.
+        - This is an overly simplified analysis for the purpose of demonstrating uncertainty quantification 
+        (via Bayesian inference) with NumPyro and presentation via streamlit.
+        - Model predictions of shoreline change should not be relied upon for real-world applications.
         '''
     )
 
