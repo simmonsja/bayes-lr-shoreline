@@ -25,7 +25,7 @@ def load_shoreline_data(transect_name='aus0206-0005',download=True):
     raw_shl_data = pd.read_csv(tmpLoc,parse_dates=True,index_col=0,header=None)
     # make sure we don't accumulate a tonne - I think i could just parse from the url
     # but lets just go with this for now
-    os.remove(tmpLoc)
+    # os.remove(tmpLoc)
     raw_shl_data.index = pd.to_datetime(raw_shl_data.index,utc=True)
     raw_shl_data.columns = ['Shoreline']
     raw_shl_data.index.name = 'Date'
@@ -39,14 +39,15 @@ def load_wave_data(transect_name='aus0206-0005'):
     Load the wave data - this should lookup the appropriate ERA5 
     collection from the transect name.
     '''
-    # load the location data - geopandas was being a pain in docker
+    # import geopandas as gpd
+    # # load the location data - geopandas was being a pain in docker
     # transect_loc = os.path.join(".","data","CoastSat_transect_layer.geojson")
     # # import geojson
     # transects = gpd.read_file(transect_loc,driver='GeoJSON')
     # au_transects = transects.query('SiteId.str.startswith("aus").values')
     # # extract the lat lon to a new column
-    # au_transects.loc[:,'longitude'] = au_transects['geometry'].apply(lambda x: (x.xy[0][0]))
-    # au_transects.loc[:,'latitutde'] = au_transects['geometry'].apply(lambda x: (x.xy[1][0]))
+    # au_transects.loc[:,'longitude'] = au_transects['geometry'].apply(lambda x: (x.xy[0][0] + x.xy[0][-1])/2)
+    # au_transects.loc[:,'latitutde'] = au_transects['geometry'].apply(lambda x: (x.xy[1][0] + x.xy[1][-1])/2)
     # transects_out = au_transects[['SiteId','TransectId','Orientation','longitude','latitutde']]
     # transects_out.to_csv(os.path.join(".","data","CoastSat_transect_layer.csv"))
     
@@ -57,21 +58,31 @@ def load_wave_data(transect_name='aus0206-0005'):
     if not transect_name in transects.index:
         raise ValueError("Transect name not found - please select an Australian transect")
     lat = transects.loc[transect_name,'latitutde']
-    # lon = transects.loc[transect_name,'longitude']
+    lon = transects.loc[transect_name,'longitude']
 
     wave_data_lat = np.array([-27.0,-28.0,-29.0,-30.0,-31.0,-32.0,-33.0,-34.0,-35.0,-36.0,-37.0])
     wave_data_lon = np.array([153.5,153.5,153.5,153.5,153.5,153.0,152.0,151.5,151.0,150.5,150.0])
 
     # find the closest by lat
     lat_idx = np.argmin(np.abs(wave_data_lat-lat))
-    
     # load the wave data
     buoy_name = 'era5_{}_{}'.format(wave_data_lat[lat_idx],wave_data_lon[lat_idx])
     data_loc = os.path.join(".","data","waves","{}.csv".format(buoy_name))
+    #deubg
+    data_loc = os.path.join(".","data","waves","combined.csv")
     raw_wave_data = pd.read_csv(data_loc,index_col=0,parse_dates=True)
+    raw_wave_data.index = pd.to_datetime(raw_wave_data.index,utc=True)
     # make sure this is reasonably named
     raw_wave_data.rename(columns={'significant_height_of_wind_and_swell_waves':'Hsig'},inplace=True)
-    return raw_wave_data
+    # check timing
+    max_tdiff = np.diff(raw_wave_data.index.values).max().astype('timedelta64[h]')
+    if max_tdiff > np.timedelta64(6,'h'):
+        print("WARNING: wave data has large gaps - check the data")
+    #enforce hourly with interp.
+    raw_wave_data = raw_wave_data.reindex(pd.date_range(raw_wave_data.index.min(),raw_wave_data.index.max(),freq='H'))
+    raw_wave_data = raw_wave_data.interpolate()
+    
+    return raw_wave_data, [lat,lon]
 
 ###############################################################################
 ###############################################################################
