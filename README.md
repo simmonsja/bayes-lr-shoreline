@@ -2,6 +2,8 @@
 
 Written by Joshua Simmons 2022
 
+[Also available as a Streamlit web app!](https://simmonsja-bayes-lr-shoreline-bayes-shore-streamlit-nrp8m3.streamlit.app)
+
 In this notebook, we will fit a Bayesian Linear Regression to predict shoreline change due to coastal storms. This will mirror the simple empirical model developed by:
 
 *Harley, M. D., Turner, I. L., Short, A. D., & Ranasinghe, R. (2009). An empirical model of beach response to storms–SE Australia. In Coasts and Ports (pp. 600-606).*
