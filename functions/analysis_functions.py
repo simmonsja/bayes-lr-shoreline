@@ -41,8 +41,13 @@ def generate_storm_dataset(shl_data,wave_data,storm_thresh=None):
     storm_data['timeDelta'] = (storm_data['postDate'] - storm_data['preDate']).dt.days
     storm_data['zeroCross'] = np.sign(storm_data['dShl']).diff().ne(0).astype(int)
     storm_data['zeroCross'] = storm_data['zeroCross'].cumsum()
-    groupedVals = storm_data.groupby(by='zeroCross',as_index=False).sum()
-    groupedVals.index = storm_data.index[[np.where(storm_data['zeroCross'] == _)[0][0] for _ in groupedVals['zeroCross']]]
+    # new pandas doesn't like my lazy treatment of dt64 variables in groupby
+    time_carry = storm_data[['preDate','postDate','zeroCross']].copy()
+    time_carry = time_carry.groupby(by='zeroCross',as_index=False).mean()
+    groupedVals = storm_data.drop(columns=['preDate','postDate']).groupby(by='zeroCross',as_index=False).sum()
+    groupedVals = pd.concat([groupedVals,time_carry.drop(columns=['zeroCross'])],axis=1)
+    # don't know why I went this way but adjusting this to work
+    groupedVals.index = storm_data.index[[np.where(storm_data['zeroCross'] == _)[0][0] for _ in groupedVals['zeroCross'].values]]
     storm_data['E'] = groupedVals['E']
     storm_data['dShl'] = groupedVals['dShl']
     storm_data['timeDelta'] = groupedVals['timeDelta']

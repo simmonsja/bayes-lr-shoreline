@@ -1,8 +1,8 @@
 matplotlib
 tk
 seaborn
-pandas
+pandas<2.0
 scikit-learn
 arviz
 numpyro
-streamlit
+streamlit 
